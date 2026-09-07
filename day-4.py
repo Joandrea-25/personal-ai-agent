@@ -1,5 +1,7 @@
 
 import os
+import base64
+from email.mime.text import MIMEText
 from datetime import datetime, timezone, timedelta
 
 from dotenv import load_dotenv
@@ -26,6 +28,16 @@ TOKEN_FILE = os.path.join(
     BASE_DIR,
     "token.json"
 )
+
+GMAIL_TOKEN_FILE = os.path.join(
+    BASE_DIR,
+    "gmail_token.json"
+)
+
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.compose"
+]
 
 
 # ============================================================
@@ -400,6 +412,257 @@ def plan_my_day():
 
 
 # ============================================================
+# GOOGLE GMAIL CONNECTION
+# ============================================================
+
+def get_gmail_service():
+    """Connect to the Gmail account selected during OAuth."""
+    creds = None
+
+    if os.path.exists(GMAIL_TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(
+            GMAIL_TOKEN_FILE,
+            GMAIL_SCOPES
+        )
+
+    # Re-authorize if the saved token does not contain every Gmail scope
+    # required by this version of the agent. This prevents the old
+    # read-only token from causing a 403 Insufficient Permission error.
+    saved_scopes = set(getattr(creds, "scopes", None) or []) if creds else set()
+    required_scopes = set(GMAIL_SCOPES)
+
+    if not creds or not creds.valid or not required_scopes.issubset(saved_scopes):
+        flow = InstalledAppFlow.from_client_secrets_file(
+            CLIENT_SECRET_FILE,
+            GMAIL_SCOPES
+        )
+
+        creds = flow.run_local_server(port=0)
+
+        with open(GMAIL_TOKEN_FILE, "w") as token:
+            token.write(creds.to_json())
+
+    return build(
+        "gmail",
+        "v1",
+        credentials=creds
+    )
+
+
+gmail_service = get_gmail_service()
+
+
+# ============================================================
+# GMAIL — ACCOUNT DETAILS
+# ============================================================
+
+def get_gmail_account_details():
+    """Get the email address of the connected Gmail account."""
+    profile = gmail_service.users().getProfile(
+        userId="me"
+    ).execute()
+
+    email_address = profile.get(
+        "emailAddress",
+        "Unknown email address"
+    )
+
+    return (
+        f"Connected Gmail account: {email_address}\n"
+        "The Gmail API profile does not provide the account "
+        "holder's display name."
+    )
+
+
+# ============================================================
+# GMAIL — READ RECENT EMAILS
+# ============================================================
+
+def _decode_gmail_body(data):
+    """Decode a Gmail message body from base64url format."""
+    if not data:
+        return ""
+
+    try:
+        decoded = base64.urlsafe_b64decode(
+            data + "=" * (-len(data) % 4)
+        )
+        return decoded.decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _extract_email_body(payload):
+    """Extract readable plain-text content from a Gmail message payload."""
+    if not payload:
+        return ""
+
+    mime_type = payload.get("mimeType", "")
+    body_data = payload.get("body", {}).get("data")
+
+    if body_data and mime_type == "text/plain":
+        return _decode_gmail_body(body_data).strip()
+
+    parts = payload.get("parts", [])
+
+    # Prefer plain text when the email is multipart.
+    for part in parts:
+        if part.get("mimeType") == "text/plain":
+            text = _extract_email_body(part)
+            if text:
+                return text
+
+    # If there is no plain-text part, try any nested parts.
+    for part in parts:
+        text = _extract_email_body(part)
+        if text:
+            return text
+
+    return ""
+
+
+def get_recent_emails():
+    """Get recent emails, including sender, subject, date, and body."""
+    results = gmail_service.users().messages().list(
+        userId="me",
+        maxResults=10
+    ).execute()
+
+    messages = results.get("messages", [])
+
+    if not messages:
+        return (
+            "You currently have no recent emails in your "
+            "connected Gmail account."
+        )
+
+    result = []
+
+    for message in messages:
+        message_data = gmail_service.users().messages().get(
+            userId="me",
+            id=message["id"],
+            format="full"
+        ).execute()
+
+        headers = {
+            header["name"]: header["value"]
+            for header in message_data.get("payload", {}).get(
+                "headers", []
+            )
+        }
+
+        body = _extract_email_body(
+            message_data.get("payload", {})
+        )
+
+        if not body:
+            body = "(No readable plain-text body found.)"
+
+        result.append(
+            f"From: {headers.get('From', 'Unknown')}\n"
+            f"Subject: {headers.get('Subject', '(No subject)')}\n"
+            f"Date: {headers.get('Date', 'Unknown')}\n"
+            f"Message:\n{body}"
+        )
+
+    return "\n\n".join(result)
+
+
+# ============================================================
+# GMAIL — DRAFT AND SEND REPLIES
+# ============================================================
+
+pending_gmail_draft = None
+
+def _create_gmail_message(to: str, subject: str, body: str, reply_to_message_id: str = None):
+    """Create a MIME email message and encode it for the Gmail API."""
+    message = MIMEText(body, "plain", "utf-8")
+    message["To"] = to
+    message["Subject"] = subject
+
+    if reply_to_message_id:
+        message["In-Reply-To"] = reply_to_message_id
+        message["References"] = reply_to_message_id
+
+    raw_message = base64.urlsafe_b64encode(
+        message.as_bytes()
+    ).decode("utf-8")
+
+    return {"raw": raw_message}
+
+
+def draft_email(to: str, subject: str, body: str):
+    """Create a Gmail draft. The draft is NOT sent automatically."""
+    global pending_gmail_draft
+
+    message = _create_gmail_message(to, subject, body)
+
+    draft = gmail_service.users().drafts().create(
+        userId="me",
+        body={"message": message}
+    ).execute()
+
+    pending_gmail_draft = {
+        "draft_id": draft.get("id"),
+        "to": to,
+        "subject": subject,
+        "body": body
+    }
+
+    return (
+        f"Draft created successfully.\n"
+        f"To: {to}\n"
+        f"Subject: {subject}\n"
+        f"Message:\n{body}\n\n"
+        "I have NOT sent it. Would you like me to send this email?"
+    )
+
+
+def send_pending_gmail_draft():
+    """Send the currently pending Gmail draft after explicit user approval."""
+    global pending_gmail_draft
+
+    if not pending_gmail_draft:
+        return "There is no Gmail draft waiting for approval."
+
+    draft_id = pending_gmail_draft["draft_id"]
+
+    sent = gmail_service.users().drafts().send(
+        userId="me",
+        body={"id": draft_id}
+    ).execute()
+
+    recipient = pending_gmail_draft["to"]
+    subject = pending_gmail_draft["subject"]
+    pending_gmail_draft = None
+
+    return (
+        f"Email sent successfully to {recipient}. "
+        f"Subject: {subject}"
+    )
+
+
+def cancel_pending_gmail_draft():
+    """Cancel and delete the pending Gmail draft."""
+    global pending_gmail_draft
+
+    if not pending_gmail_draft:
+        return "There is no Gmail draft waiting for approval."
+
+    draft_id = pending_gmail_draft["draft_id"]
+
+    gmail_service.users().drafts().delete(
+        userId="me",
+        id=draft_id
+    ).execute()
+
+    pending_gmail_draft = None
+
+    return "Okay, I cancelled and deleted the pending Gmail draft."
+
+
+# ============================================================
 # GEMINI SETUP
 # ============================================================
 
@@ -431,7 +694,7 @@ calendar_service = get_calendar_service()
 # ============================================================
 
 chat = client.chats.create(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
 
     config={
         "system_instruction": """
@@ -443,10 +706,23 @@ You can:
 - search Calendar events,
 - create Calendar events,
 - update Calendar events,
-- delete Calendar events.
+- delete Calendar events,
+- read recent Gmail emails,
+- show the connected Gmail account email address,
+- create Gmail drafts,
+- send an approved Gmail draft.
 
-For Calendar requests, use the appropriate
-Calendar tool.
+Important Gmail safety rule:
+- Creating a draft is allowed when the user asks for a draft.
+- NEVER send an email automatically.
+- After creating a draft, clearly show the recipient, subject, and message
+  and ask the user for explicit approval before sending.
+- Only send after the Python chat loop receives an explicit approval such
+  as "yes", "send it", or "send the email".
+
+For Calendar requests, use the appropriate Calendar tool.
+For Gmail account requests, use get_gmail_account_details.
+For Gmail email requests, use get_recent_emails.
 
 Never claim that a Calendar operation succeeded
 unless the operation actually succeeded.
@@ -465,7 +741,10 @@ daily planner handles the planning workflow.
             create_calendar_event,
             search_calendar_events,
             update_calendar_event,
-            delete_calendar_event
+            delete_calendar_event,
+            get_gmail_account_details,
+            get_recent_emails,
+            draft_email
         ]
     }
 )
@@ -487,6 +766,52 @@ while True:
     if lower_input == "stop":
         print("Agent: Okay, goodbye!")
         break
+
+    # --------------------------------------------------------
+    # GMAIL DRAFT REJECTION
+    # --------------------------------------------------------
+
+    if pending_gmail_draft and (
+        lower_input == "no"
+        or lower_input.startswith("no ")
+        or lower_input.startswith("no,")
+        or "don't send" in lower_input
+        or "do not send" in lower_input
+        or "dont send" in lower_input
+        or lower_input == "cancel"
+        or lower_input.startswith("cancel ")
+    ):
+
+        try:
+            print("Agent:", cancel_pending_gmail_draft())
+        except Exception as e:
+            print("Agent: I couldn't cancel the Gmail draft.")
+            print("Error:", e)
+
+        continue
+
+    # --------------------------------------------------------
+    # GMAIL DRAFT APPROVAL
+    # --------------------------------------------------------
+
+    if pending_gmail_draft and (
+        lower_input == "yes"
+        or lower_input.startswith("yes ")
+        or lower_input.startswith("yes,")
+        or lower_input == "send it"
+        or lower_input == "send the email"
+        or lower_input == "send email"
+        or lower_input == "confirm"
+        or lower_input == "confirmed"
+    ):
+
+        try:
+            print("Agent:", send_pending_gmail_draft())
+        except Exception as e:
+            print("Agent: I couldn't send the approved Gmail draft.")
+            print("Error:", e)
+
+        continue
 
     # --------------------------------------------------------
     # REJECTION

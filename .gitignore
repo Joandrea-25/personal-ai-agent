@@ -4,4 +4,4 @@ client_secret_*.json
 .venv/
 __pycache__/
 *.pyc
-.vscode/
+.vscode/gmail_token.json

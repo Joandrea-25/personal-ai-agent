@@ -5,3 +5,5 @@ client_secret_*.json
 __pycache__/
 *.pyc
 .vscode/gmail_token.json
+
+gmail_token.json

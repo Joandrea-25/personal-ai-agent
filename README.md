@@ -1,222 +1,209 @@
-Personal AI Agent 🤖
+# AZRIEL 🤖
 
-A Python-based Personal AI Agent that uses Google's Gemini API along with Google Calendar and Gmail integrations to understand user requests and perform real actions.
+AZRIEL is a Personal AI Agent built using Python and Google's Gemini API.
 
-The goal of this project is to move beyond a traditional chatbot. Instead of only generating responses, the agent can use connected tools and services to perform tasks such as managing calendar events and interacting with emails.
+I built this project to understand how an AI Agent can do more than just respond to questions. Instead of only generating a response like a normal chatbot, AZRIEL can use different tools to perform actions based on what the user asks.
 
-✨ Features
-🤖 AI Agent
-Understands user requests using Google's Gemini AI
-Uses tools to perform actions instead of only generating responses
-Handles basic mathematical calculations
-Provides conversational interaction through a command-line interface
-📅 Google Calendar Integration
+Currently, AZRIEL can perform mathematical calculations, manage Google Calendar events, help with daily planning, and interact with Gmail.
 
-The agent can:
+## What AZRIEL Can Do
 
-View upcoming Google Calendar events
-Search calendar events
-Create new calendar events
-Update existing calendar events
-Delete calendar events
-Plan a daily schedule
-Ask for user approval before adding proposed events to Google Calendar
-📧 Gmail Integration
+### AI Agent
 
-The AI Agent is also connected with Gmail functionality, allowing it to interact with the user's email account as part of the agent system.
+AZRIEL uses Gemini to understand the user's request.
 
-🧠 How It Works
+Based on the request, it can decide whether a tool is needed and call the appropriate function. For example, if the user asks to create a calendar event, AZRIEL can use the Calendar functionality instead of just explaining how to create one.
 
-The AI agent receives a request from the user and determines whether a connected tool is needed.
+It can also perform basic mathematical operations such as:
 
-Example: Checking Calendar Events
-User: What events do I have coming up?
+- Addition
+- Subtraction
+- Multiplication
+- Division
 
-        ↓
+The agent runs through a command-line interface where the user can interact with it using normal language.
 
-Gemini AI Agent
+## Google Calendar Integration
 
-        ↓
+AZRIEL is connected to Google Calendar and can:
 
-Calendar Tool
+- View upcoming events
+- Search for events
+- Create new events
+- Update existing events
+- Delete events
+- Help plan a daily schedule
 
-        ↓
+For daily planning, AZRIEL checks the calendar and suggests a schedule based on the request. Before adding the suggested events to Google Calendar, it asks for user approval.
 
-Google Calendar API
+The events are only added if the user accepts the plan.
 
-        ↓
+## Gmail Integration
 
-Agent returns the result
-Example: Daily Planning
-User asks to plan their day
+AZRIEL is also connected to Gmail.
 
-        ↓
+The agent can read recent emails and help the user interact with their email account.
 
-Agent checks Google Calendar
+For actions that can affect the user's account, AZRIEL is designed to ask for user approval before performing them.
 
-        ↓
+## How It Works
 
-Creates a proposed schedule
+When a user gives AZRIEL a request, Gemini is used to understand what the user is asking for.
 
-        ↓
+If the request requires an action, the agent checks the available tools and uses the appropriate one.
 
-Waits for user approval
+For example, if the user asks about upcoming events, AZRIEL uses the Google Calendar functionality to get the information and returns the result.
 
-        ↓
+If the user asks to create or modify an event, the agent uses the Calendar API to perform the requested action.
 
-If approved → Events are added to Google Calendar
+The main thing I wanted to understand while building this project was how an AI model can work together with Python functions and external APIs.
 
-If rejected → No changes are made
-🛠️ Technologies Used
-Python
-Google Gemini API
-Google GenAI SDK
-Google Calendar API
-Gmail API
-Google OAuth 2.0
-google-api-python-client
-google-auth-httplib2
-google-auth-oauthlib
-python-dotenv
+## Technologies Used
 
-📁 Project Structure
-AI_AGENT/
+- Python
+- Google Gemini API
+- Google GenAI SDK
+- Google Calendar API
+- Gmail API
+- Google OAuth 2.0
+- google-api-python-client
+- google-auth
+- google-auth-oauthlib
+- python-dotenv
+
+## Project Structure
+AZRIEL-AI-AGENT/
 │
-├── day-4.py
+├── azriel.py
+├── requirements.txt
 ├── README.md
-├── .gitignore
-│
-├── key.env
-│   └── Stores the Gemini API key
-│
-├── token.json
-│   └── Google Calendar authentication token
-│
-├── gmail_token.json
-│   └── Gmail authentication token
-│
-└── client_secret_*.json
-    └── Google OAuth client credentials
+└── .gitignore
+Sensitive files such as API keys, OAuth credentials, and authentication tokens are not included in the repository.
 
-⚠️ Sensitive files such as API keys, OAuth credentials, and authentication tokens are excluded from GitHub.
-
-⚙️ Setup
-1. Clone the Repository
-git clone <your-repository-url>
-cd AI_AGENT
-2. Create a Virtual Environment
+Setup
+1. Clone the repository
+git clone https://github.com/Joandrea-25/AZRIEL-AI-AGENT.git
+cd AZRIEL-AI-AGENT
+2. Create a virtual environment
 python -m venv .venv
-3. Activate the Virtual Environment
+3. Activate the virtual environment
 
-Windows PowerShell:
+For Windows PowerShell:
 
 .venv\Scripts\Activate.ps1
-4. Install Dependencies
-pip install google-genai google-api-python-client google-auth-httplib2 google-auth-oauthlib python-dotenv
-🔑 Add Your Gemini API Key
+4. Install the required packages
+pip install -r requirements.txt
+Gemini API Key
 
 Create a file named:
 
 key.env
 
-Add your API key:
+Add your Gemini API key:
 
 GEMINI_API_KEY=your_api_key_here
-🔐 Google OAuth Setup
+Google OAuth Setup
 
-To connect the agent with Google services:
+To use the Google Calendar and Gmail features, Google OAuth needs to be configured.
+
+The required steps are:
 
 Create a project in Google Cloud Console.
-Enable the required APIs:
-Google Calendar API
-Gmail API
+Enable Google Calendar API.
+Enable Gmail API.
 Configure the OAuth Consent Screen.
 Create OAuth credentials for a Desktop Application.
-Download the OAuth credentials JSON file.
+Download the credentials JSON file.
 Place the credentials file inside the project folder.
-Run the application and complete Google authentication.
+Run the program and complete the Google authentication process.
 
-Authentication tokens generated during this process are stored locally and should never be uploaded to GitHub.
+Authentication tokens created during this process are stored locally and are not uploaded to GitHub.
 
-▶️ Run the Project
-python day-4.py
+Running the Project
 
-The AI Agent will start in the terminal.
+After completing the setup, run:
 
-💬 Example Interactions
+python azriel.py
+
+The agent will start in the terminal.
+
+Example Interactions
 Mathematical Calculation
-You: 25 * 8
+You: What is 25 multiplied by 8?
 
-Agent: 200
-Check Upcoming Events
+AZRIEL: 200
+Checking Calendar Events
 You: What events do I have coming up?
 
-Agent: Here are your upcoming events...
-Plan a Day
-You: Plan my day tomorrow.
+AZRIEL: Here are your upcoming events...
+Creating an Event
+You: Create an event for tomorrow at 7 PM.
 
-Agent: Here is your proposed schedule.
+AZRIEL: Event created successfully.
+Planning the Day
+You: Help me plan my day tomorrow.
 
-Agent: Would you like me to add these events to your Google Calendar?
+AZRIEL: Here is the schedule I suggest...
 
-If approved:
+AZRIEL: Do you want me to add these events to your Google Calendar?
 
-You: Yes
+The events are only added after the user gives approval.
 
-Agent: Done! I added the events to your Google Calendar.
-🔒 Security
+Security
 
-The following sensitive files are excluded from GitHub using .gitignore:
+The following types of files are excluded from GitHub:
 
-key.env
-token.json
-gmail_token.json
-client_secret_*.json
-
-These files may contain:
-
-API keys
+Gemini API keys
 OAuth credentials
-Access tokens
-Authentication information
+Google authentication tokens
+Gmail authentication tokens
 
-Never upload these files to a public GitHub repository.
+These files contain sensitive information and should not be uploaded to a public repository.
 
-🚧 Current Status
+What I Learned:
 
-The current Personal AI Agent prototype includes:
+This project helped me understand the difference between using an LLM and building an AI Agent.
 
-✅ Gemini-powered AI interaction
-✅ Tool-based AI Agent architecture
-✅ Mathematical tools
-✅ Google Calendar integration
-✅ View Calendar events
-✅ Search Calendar events
-✅ Create Calendar events
-✅ Update Calendar events
-✅ Delete Calendar events
-✅ Daily schedule planning
-✅ User approval before Calendar changes
-✅ Gmail integration
-🚀 Future Improvements
-Improved email automation
-Email drafting with user approval before sending
-Smarter schedule planning
+An LLM can understand a prompt and generate a response. While building AZRIEL, I learned how an AI model can also be connected to tools and functions to perform actions.
+
+I also learned about:
+
+AI Agent tool calling
+Connecting Python functions with an AI model
+API integration
+Google Calendar API
+Gmail API
+OAuth authentication
+Authentication tokens and permission scopes
+Environment variables
+Debugging API and integration issues
+
+One of the main things I learned from this project is that building an AI Agent involves connecting multiple parts together. The AI model understands the request, but APIs, functions, and authentication are needed to allow the agent to actually perform actions.
+
+Future Improvements
+
+Some features I would like to add to AZRIEL in the future are:
+
+Better daily schedule planning
+Recurring tasks and reminders
+Email summarization
+Email drafting with user approval
 Task and to-do list management
-Multiple tool integrations
-Real-time information capabilities
-Web interface
-Persistent memory for user preferences
+More integrations with other applications
+Better planning based on calendar availability
+A web interface
 More advanced AI Agent workflows
-🎯 Project Goal
+About the Project
 
-This project was built to understand how modern AI Agents work.
+I built AZRIEL to learn more about AI Agents by actually creating one.
 
-An LLM can generate responses, but an AI Agent can use tools and take actions.
+I wanted to understand what happens when an AI model is connected with tools and external services instead of only being used to generate text.
 
-By connecting Gemini with tools such as Google Calendar and Gmail, this project explores how an AI model can move beyond conversation and interact with real-world applications.
+Starting with simple tools helped me understand how tool calling works. I then expanded the project by connecting Google Calendar and Gmail.
 
-👩‍💻 Author
+AZRIEL is something I want to continue improving, and building it helped me get practical experience with AI models, APIs, authentication, and AI Agent workflows.
+
+Author
 
 Joan Andrea
 
